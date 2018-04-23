@@ -1,0 +1,21 @@
+{
+  "name": "spinal-core-system",
+  "version": "1.0.0",
+  "description": "script to initialize a spinal core environnement.",
+  "main": "main.js",
+  "bin": {
+    "spinal-register": "spinal-register.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "npm run spinal-register",
+    "spinal-register": "spinal-register --launch-system"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^2.15.1",
+    "fs-extra": "^5.0.0",
+    "q": "^1.5.1"
+  }
+}
