@@ -1,41 +1,39 @@
 #!/usr/bin/env node
 
 const path = require("path");
-const fs = require('fs-extra');
-const Q = require('q');
+const fs = require("fs-extra");
+const Q = require("q");
 
-
-var program = require('commander');
+var program = require("commander");
 program
-  .version('1.0.0')
-  .option('-n, --node-organ', 'register a node module deamon')
-  .option('-b, --browser', 'register a browser module')
-  .option('-s, --spinalhub', 'register a spinalhub')
-  .option('-l, --launch-system', 'register a system')
+  .version("1.0.0")
+  .option("-n, --node-organ", "register a node module deamon")
+  .option(
+    "-b, --browser [prefixToRemove]",
+    "register a browser module, add a prefix to remove"
+  )
+  .option("-s, --spinalhub", "register a spinalhub")
+  .option("-l, --launch-system", "register a system")
   .parse(process.argv);
 
 const full_module_path = path.resolve(".");
 let test_is_in_node_modules = /node_modules/g.exec(full_module_path);
 if (test_is_in_node_modules === null) {
-  return true;
+  process.exit(0);
 }
 const rootFolder = path.resolve(full_module_path + "/../..");
 
 var program_type = "";
-if (program.hasOwnProperty("nodeOrgan"))
-  program_type = "NODE";
-if (program.hasOwnProperty("browser"))
-  program_type = "BROWSER";
-if (program.hasOwnProperty("spinalhub"))
-  program_type = "HUB";
+if (program.hasOwnProperty("nodeOrgan")) program_type = "NODE";
+if (program.hasOwnProperty("browser")) program_type = "BROWSER";
+if (program.hasOwnProperty("spinalhub")) program_type = "HUB";
 if (program.hasOwnProperty("launchSystem")) {
   handle_system();
-  return true;
+  process.exit(0);
 }
 if (program_type === "") {
   program_type = "NODE";
 }
-const module_config_path = path.resolve(full_module_path + "/default_config.json");
 const browser_folder_path = path.resolve(rootFolder + "/.browser_organs");
 const global_config_file_path = path.resolve(rootFolder + "/.config.json");
 const global_app_config_file_path = path.resolve(rootFolder + "/.apps.json");
@@ -44,14 +42,14 @@ const nerve_center_path = path.resolve(rootFolder + "/nerve-center");
 function init_folders() {
   return Q.all([
     create_folder_if_not_exist(browser_folder_path),
-    create_folder_if_not_exist(nerve_center_path),
+    create_folder_if_not_exist(nerve_center_path)
   ]);
 }
 
 function init_config() {
   return Q.all([
     create_json_if_not_exist(global_config_file_path),
-    create_json_if_not_exist(global_app_config_file_path),
+    create_json_if_not_exist(global_app_config_file_path)
   ]);
 }
 
@@ -90,27 +88,32 @@ function handle_hub() {
     fs.copy(spinalhub_path, spinalhub_dest, {
       overwrite: true
     });
-
   });
 }
 
 function handle_browser() {
   const browser_path = path.resolve(full_module_path + "/www");
   const package_path = path.resolve(full_module_path + "/package.json");
-
-  fs.readJson(package_path)
+  let browserPrefix =
+    typeof program.browser == "boolean" ? "spinal-browser-" : program.browser;
+  let reg = new RegExp("/" + browserPrefix + "/gi");
+  fs
+    .readJson(package_path)
     .then(package_cfg => {
       let name = package_cfg.name;
       if (name) {
-        name = name.replace(/(ss_)|(spinal-browser-)/gi, '');
+        name = name.replace(reg, "");
       } else {
         name = "undef";
       }
       const browser_dest = path.resolve(browser_folder_path + "/" + name);
-      const browser_dest_relatif = path.relative(browser_folder_path, browser_path);
-      return fs.pathExists(browser_dest).then((exists) => {
+      const browser_dest_relatif = path.relative(
+        browser_folder_path,
+        browser_path
+      );
+      return fs.pathExists(browser_dest).then(exists => {
         if (exists === false) {
-          fs.symlink(browser_dest_relatif, browser_dest, 'dir', () => {});
+          fs.symlink(browser_dest_relatif, browser_dest, "dir", () => {});
         }
       });
     })
@@ -129,8 +132,9 @@ function handle_system() {
 }
 
 // START THE SCRIPT
-init_folders().then(init_config).then(handle_program_type);
-
+init_folders()
+  .then(init_config)
+  .then(handle_program_type);
 
 // UTILITIES
 
@@ -144,15 +148,16 @@ function merge_config_rec(default_config, dest) {
   }
 }
 
-
 function extract_default_config() {
-  const config_file_path = path.resolve(full_module_path + "/default_config.json");
+  const config_file_path = path.resolve(
+    full_module_path + "/default_config.json"
+  );
   const package_path = path.resolve(full_module_path + "/package.json");
   let default_config = require(config_file_path);
   const package_cfg = require(package_path);
   let global_config = require(global_config_file_path);
   if (package_cfg && package_cfg.name) {
-    if (typeof global_config[package_cfg.name] == 'undefined') {
+    if (typeof global_config[package_cfg.name] == "undefined") {
       global_config[package_cfg.name] = default_config;
     } else {
       // don't replace exiting config merge it with existing as priority
@@ -168,33 +173,31 @@ function add_global_app_config(cwd) {
 
   let global_apps = require(global_app_config_file_path);
   if (global_apps) {
-    if (!global_apps.apps)
-      global_apps.apps = [];
+    if (!global_apps.apps) global_apps.apps = [];
     let apps = global_apps.apps;
     for (var i = 0; i < apps.length; i++) {
       if (apps[i].name === package_cfg.name) {
         apps.splice(i, 1, {
-          "name": package_cfg.name,
-          "script": package_cfg.main ? package_cfg.main : "main.js",
-          "cwd": cwd
+          name: package_cfg.name,
+          script: package_cfg.main ? package_cfg.main : "main.js",
+          cwd: cwd
         });
         return save_json(global_apps, global_app_config_file_path);
       }
     }
     apps.push({
-      "name": package_cfg.name,
-      "script": package_cfg.main ? package_cfg.main : "main.js",
-      "cwd": cwd
+      name: package_cfg.name,
+      script: package_cfg.main ? package_cfg.main : "main.js",
+      cwd: cwd
     });
     return save_json(global_apps, global_app_config_file_path);
   }
 }
 
-
 function save_json(json_obj, path) {
   var content = JSON.stringify(json_obj, null, 2);
   fs.writeFile(path, content, {
-    flag: 'w'
+    flag: "w"
   });
 }
 
@@ -212,25 +215,30 @@ function test_exist(path) {
 
 function create_json_if_not_exist(path) {
   let defer = Q.defer();
-  test_exist(path).then(() => {
-    defer.resolve();
-  }, () => {
-    fs.writeFile(path, "{}", (err) => {
-      if (err)
-        defer.reject(err);
+  test_exist(path).then(
+    () => {
       defer.resolve();
-    });
-  });
+    },
+    () => {
+      fs.writeFile(path, "{}", err => {
+        if (err) defer.reject(err);
+        defer.resolve();
+      });
+    }
+  );
   return defer.promise;
 }
 
 function create_folder_if_not_exist(path) {
   let defer = Q.defer();
-  test_exist(path).then(() => {
-    defer.resolve();
-  }, () => {
-    fs.mkdirSync(path);
-    defer.resolve();
-  });
+  test_exist(path).then(
+    () => {
+      defer.resolve();
+    },
+    () => {
+      fs.mkdirSync(path);
+      defer.resolve();
+    }
+  );
   return defer.promise;
 }

@@ -26,22 +26,9 @@
 const fs = require("fs");
 const path = require("path");
 var apps_keys;
-const appsPath = path.resolve("./.apps.json"),
-  configPath = path.resolve("./.config.json");
-
-let appsStr = fs.readFileSync(appsPath, {
-  flag: "r",
-  ecoding: "utf8"
-});
-let configStr = fs.readFileSync(configPath, {
-  flag: "r",
-  ecoding: "utf8"
-});
-
-let apps = JSON.parse(appsStr.toString());
-let config = JSON.parse(configStr.toString());
-
+const module_config_path = path.resolve("./default_config.json");
 let actu_env = "";
+var apps, configStr, config;
 switch (process.env.NODE_ENV) {
   case "production":
     actu_env = "env_production";
@@ -53,38 +40,87 @@ switch (process.env.NODE_ENV) {
     actu_env = "env";
 }
 
-for (apps_keys in apps.apps) {
-  if (apps.apps.hasOwnProperty(apps_keys)) {
-    let name = apps.apps[apps_keys].name;
-    apps.apps[apps_keys] = Object.assign(apps.apps[apps_keys], config[name]);
+if (fs.existsSync(module_config_path)) {
+  // in module
+  const module_path = path.resolve(".");
+  const package_path = path.resolve(module_path + "/package.json");
+  let packageStr = fs.readFileSync(package_path, {
+    flag: "r",
+    ecoding: "utf8"
+  });
+  let _package = JSON.parse(packageStr.toString());
+  let curr_app = {
+    name: _package.name,
+    script: _package.main,
+    cwd: module_path
+  };
+
+  apps = {
+    apps: [curr_app]
+  };
+
+  configStr = fs.readFileSync(module_config_path, {
+    flag: "r",
+    ecoding: "utf8"
+  });
+  config = JSON.parse(configStr.toString());
+  for (var key in config) {
+    if (config.hasOwnProperty(key)) {
+      curr_app[key] = config[key];
+    }
+  }
+  let port = extract_port(curr_app);
+  if (port != null) {
+    curr_app.name = curr_app.name + "-" + port;
+  }
+} else {
+  const appsPath = path.resolve("./.apps.json"),
+    configPath = path.resolve("./.config.json");
+
+  let appsStr = fs.readFileSync(appsPath, {
+    flag: "r",
+    ecoding: "utf8"
+  });
+  configStr = fs.readFileSync(configPath, {
+    flag: "r",
+    ecoding: "utf8"
+  });
+
+  apps = JSON.parse(appsStr.toString());
+  config = JSON.parse(configStr.toString());
+
+  for (apps_keys in apps.apps) {
+    if (apps.apps.hasOwnProperty(apps_keys)) {
+      let name = apps.apps[apps_keys].name;
+      apps.apps[apps_keys] = Object.assign(apps.apps[apps_keys], config[name]);
+    }
+  }
+
+  let hub_cfg = get_hub_cfg(config);
+
+  if (hub_cfg) {
+    for (apps_keys in apps.apps) {
+      if (apps.apps.hasOwnProperty(apps_keys)) {
+        if ("spinal-core-hub" === apps.apps[apps_keys].name) continue;
+        merge_config_rec(hub_cfg, apps.apps[apps_keys]);
+      }
+    }
+  }
+
+  for (apps_keys in apps.apps) {
+    if (apps.apps.hasOwnProperty(apps_keys)) {
+      let port = extract_port(apps.apps[apps_keys]);
+      if (port != null) {
+        apps.apps[apps_keys].name = apps.apps[apps_keys].name + "-" + port;
+      }
+    }
   }
 }
-
 function get_hub_cfg(config) {
   if (config.hasOwnProperty("spinal-core-hub")) {
     return config["spinal-core-hub"];
   }
   return null;
-}
-
-let hub_cfg = get_hub_cfg(config);
-
-if (hub_cfg) {
-  for (apps_keys in apps.apps) {
-    if (apps.apps.hasOwnProperty(apps_keys)) {
-      if ("spinal-core-hub" === apps.apps[apps_keys].name) continue;
-      merge_config_rec(hub_cfg, apps.apps[apps_keys]);
-    }
-  }
-}
-
-for (apps_keys in apps.apps) {
-  if (apps.apps.hasOwnProperty(apps_keys)) {
-    let port = extract_port(apps.apps[apps_keys]);
-    if (port != null) {
-      apps.apps[apps_keys].name = apps.apps[apps_keys].name;
-    }
-  }
 }
 
 function merge_config_rec(default_config, dest) {
