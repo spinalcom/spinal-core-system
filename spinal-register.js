@@ -28,8 +28,9 @@ if (program.hasOwnProperty("nodeOrgan")) program_type = "NODE";
 if (program.hasOwnProperty("browser")) program_type = "BROWSER";
 if (program.hasOwnProperty("spinalhub")) program_type = "HUB";
 if (program.hasOwnProperty("launchSystem")) {
-  handle_system();
-  process.exit(0);
+  handle_system().then(() => {
+    process.exit(0);
+  });
 }
 if (program_type === "") {
   program_type = "NODE";
@@ -123,12 +124,22 @@ function handle_browser() {
 }
 
 function handle_system() {
+  console.log("handle_system");
   const launchCfg_src = path.resolve(full_module_path + "/launch.config.js");
   const launchCfg_dest = path.resolve(rootFolder + "/launch.config.js");
+  console.log("launchCfg_src => ", launchCfg_src);
+  console.log("launchCfg_dest => ", launchCfg_dest);
 
-  fs.copy(launchCfg_src, launchCfg_dest, {
-    overwrite: true
-  });
+  return fs
+    .copy(launchCfg_src, launchCfg_dest, {
+      overwrite: true
+    })
+    .then(() => {
+      console.log("done");
+    })
+    .catch(err => {
+      console.error(err);
+    });
 }
 
 // START THE SCRIPT
