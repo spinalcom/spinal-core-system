@@ -97,7 +97,7 @@ function handle_browser() {
   const package_path = path.resolve(full_module_path + "/package.json");
   let browserPrefix =
     typeof program.browser == "boolean" ? "spinal-browser-" : program.browser;
-  let reg = new RegExp("/" + browserPrefix + "/gi");
+  let reg = new RegExp(browserPrefix, "gi");
   fs
     .readJson(package_path)
     .then(package_cfg => {
@@ -124,11 +124,8 @@ function handle_browser() {
 }
 
 function handle_system() {
-  console.log("handle_system");
   const launchCfg_src = path.resolve(full_module_path + "/launch.config.js");
   const launchCfg_dest = path.resolve(rootFolder + "/launch.config.js");
-  console.log("launchCfg_src => ", launchCfg_src);
-  console.log("launchCfg_dest => ", launchCfg_dest);
 
   return fs
     .copy(launchCfg_src, launchCfg_dest, {
