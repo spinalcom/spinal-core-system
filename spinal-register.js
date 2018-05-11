@@ -93,34 +93,45 @@ function handle_hub() {
 }
 
 function handle_browser() {
-  const browser_path = path.resolve(full_module_path + "/www");
-  const package_path = path.resolve(full_module_path + "/package.json");
-  let browserPrefix =
-    typeof program.browser == "boolean" ? "spinal-browser-" : program.browser;
-  let reg = new RegExp(browserPrefix, "gi");
-  fs
-    .readJson(package_path)
-    .then(package_cfg => {
-      let name = package_cfg.name;
-      if (name) {
-        name = name.replace(reg, "");
-      } else {
-        name = "undef";
-      }
-      const browser_dest = path.resolve(browser_folder_path + "/" + name);
-      const browser_dest_relatif = path.relative(
-        browser_folder_path,
-        browser_path
-      );
-      return fs.pathExists(browser_dest).then(exists => {
-        if (exists === false) {
-          fs.symlink(browser_dest_relatif, browser_dest, "dir", () => {});
+  const config_env_folder_path = path.resolve(rootFolder + "/.config_env");
+
+  create_folder_if_not_exist(config_env_folder_path).then(() => {
+    const browser_path = path.resolve(full_module_path + "/www");
+    const package_path = path.resolve(full_module_path + "/package.json");
+    let browserPrefix =
+      typeof program.browser == "boolean" ? "spinal-browser-" : program.browser;
+    let reg = new RegExp(browserPrefix, "gi");
+    fs
+      .readJson(package_path)
+      .then(package_cfg => {
+        let name = package_cfg.name;
+        if (name) {
+          name = name.replace(reg, "");
+        } else {
+          name = "undef";
         }
+
+        const config_env_path = path.resolve(
+          config_env_folder_path + "/" + name + ".json"
+        );
+
+        return create_json_if_not_exist(config_env_path).then(() => {
+          const browser_dest = path.resolve(browser_folder_path + "/" + name);
+          const browser_dest_relatif = path.relative(
+            browser_folder_path,
+            browser_path
+          );
+          return fs.pathExists(browser_dest).then(exists => {
+            if (exists === false) {
+              fs.symlink(browser_dest_relatif, browser_dest, "dir", () => {});
+            }
+          });
+        });
+      })
+      .catch(err => {
+        console.error(err);
       });
-    })
-    .catch(err => {
-      console.error(err);
-    });
+  });
 }
 
 function handle_system() {
