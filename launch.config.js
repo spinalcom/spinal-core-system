@@ -73,6 +73,7 @@ if (fs.existsSync(module_config_path)) {
   if (port != null) {
     curr_app.name = curr_app.name + "-" + port;
   }
+  curr_app.restart_delay = "3000";
 } else {
   const appsPath = path.resolve("./.apps.json"),
     configPath = path.resolve("./.config.json");
