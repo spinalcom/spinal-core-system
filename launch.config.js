@@ -113,9 +113,11 @@ if (fs.existsSync(module_config_path)) {
       if (port != null) {
         apps.apps[apps_keys].name = apps.apps[apps_keys].name + "-" + port;
       }
+      apps.apps[apps_keys].restart_delay = "3000";
     }
   }
 }
+
 function get_hub_cfg(config) {
   if (config.hasOwnProperty("spinal-core-hub")) {
     return config["spinal-core-hub"];
